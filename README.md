@@ -11,21 +11,24 @@ conectados usando Socket.IO.
 ## Estado actual
 
 - Recibe alertas mediante `POST /api/alerta`.
-- Se suscribe por MQTT a `habitacion1/paciente1/bpm` en `172.21.0.244:1883`.
-- Interpreta el payload MQTT como un BPM entero enviado como texto, por ejemplo `87`.
-- Las lecturas MQTT se muestran con el estado `recibido`; no se clasifican clínicamente.
-- Actualiza el último ritmo medido en los clientes conectados.
-- Muestra un historial en memoria en cada navegador.
+- Se suscribe por MQTT a `habitacion1/+/bpm` en `172.21.0.244:1883`.
+- Identifica habitación y paciente a partir de topics como `habitacion1/paciente2/bpm`.
+- Interpreta el payload MQTT como un BPM positivo enviado como texto, por ejemplo `87`.
+- Muestra una tarjeta independiente con la última lectura de cada paciente.
+- Permite buscar pacientes y filtrar por habitación.
+- Mantiene en memoria las últimas lecturas mientras el servidor está activo.
+- Las lecturas MQTT se muestran como `recibido`; no se clasifican clínicamente.
+- Conserva `POST /api/alerta` como vía opcional de ingreso por HTTP.
 - Clasifica visualmente las alertas con los estados `normal`, `advertencia` y `peligro`.
 - No persiste alertas en una base de datos.
 - No incluye autenticación del endpoint de ingestión.
 
 ## Arquitectura
 
-1. La ESP32 publica el BPM como texto en `habitacion1/paciente1/bpm`.
-2. El servidor Node.js se suscribe al broker MQTT y recibe el mensaje.
-3. Socket.IO emite la lectura a los navegadores conectados.
-4. La interfaz web actualiza el indicador principal y el historial sin recargar la página.
+1. Cada ESP32 publica el BPM como texto en su topic, por ejemplo `habitacion1/paciente2/bpm`.
+2. El servidor Node.js se suscribe al patrón MQTT de la habitación y extrae habitación y paciente del topic.
+3. Socket.IO envía la lectura a los navegadores conectados y el monitor actualiza la tarjeta correspondiente.
+4. Cada navegador nuevo recibe las últimas lecturas disponibles en memoria.
 
 ## Tecnologías
 
@@ -57,18 +60,36 @@ npm run dev
 Luego abrí [http://localhost:3000](http://localhost:3000) en el navegador.
 
 Al iniciar, el servidor intenta conectarse al broker MQTT. En la terminal deberían
-aparecer `Conectado al broker MQTT` y `Suscripto al topic MQTT`. Si la dirección o el
-topic son distintos, se pueden configurar con `MQTT_URL` y `MQTT_TOPIC`.
+aparecer el broker conectado y el topic suscrito. Por defecto usa
+`MQTT_URL=mqtt://172.21.0.244:1883` y se suscribe a `habitacion1/+/bpm`. El comodín
+`+` representa un segmento, así que recibirá paciente1, paciente2, paciente3, etc.,
+de esa habitación. Si un mismo broker recibe varias habitaciones, se puede escuchar
+el segmento de habitación también:
+
+```bash
+MQTT_TOPIC='+/+/bpm' npm run dev
+```
+
+Si cada habitación tiene su propio broker, configura `MQTT_BROKERS` como un objeto
+JSON que asocie cada habitación con la dirección de su Raspberry Pi:
+
+```bash
+MQTT_BROKERS='{"habitacion1":"mqtt://172.21.0.244:1883","habitacion2":"mqtt://172.21.0.245:1883"}' npm run dev
+```
+
+En ese modo, el servidor se suscribe automáticamente a `habitacion/+/bpm` en cada
+broker. El topic debe tener la forma `habitacion/paciente/bpm`, y el payload debe ser
+un número positivo, por ejemplo `87`.
 
 Para probar la integración, deja el servidor funcionando y publica un BPM desde otra
 terminal:
 
 ```bash
 mosquitto_pub -h 172.21.0.244 -p 1883 \\
-   -t 'habitacion1/paciente1/bpm' -m '87'
+   -t 'habitacion1/paciente2/bpm' -m '87'
 ```
 
-El monitor debería mostrar `87 BPM` y agregar una entrada con estado `RECIBIDO`.
+El monitor debería crear o actualizar la tarjeta de `paciente2` en `habitacion1`.
 También se puede observar el topic directamente con `mosquitto_sub`.
 
 El puerto puede cambiarse mediante la variable de entorno `PORT`:
@@ -95,11 +116,11 @@ Recibe un objeto JSON con los datos de la alerta.
 
 Campos:
 
-| Campo | Tipo | Requerido | Descripción |
-| --- | --- | --- | --- |
-| `ritmo` | número | Sí | Ritmo cardíaco expresado en BPM. |
-| `estado` | texto | Sí | Estado visual de la alerta. |
-| `mensaje` | texto | No | Descripción mostrada en el historial. |
+| Campo       | Tipo    | Requerido | Descripción                           |
+| ----------- | ------- | --------- | -------------------------------------- |
+| `ritmo`   | número | Sí       | Ritmo cardíaco expresado en BPM.      |
+| `estado`  | texto   | Sí       | Estado visual de la alerta.            |
+| `mensaje` | texto   | No        | Descripción mostrada en el historial. |
 
 Estados utilizados por la interfaz:
 
@@ -112,8 +133,12 @@ Ejemplo con `curl`:
 ```bash
 curl -X POST http://localhost:3000/api/alerta \
    -H 'Content-Type: application/json' \
-   -d '{"ritmo":92,"estado":"advertencia","mensaje":"Ritmo elevado"}'
+   -d '{"habitacion":"habitacion1","paciente":"paciente2","ritmo":92,"estado":"recibido","mensaje":"Lectura HTTP"}'
 ```
+
+`habitacion` y `paciente` son opcionales; para identificar correctamente varios
+pacientes por HTTP, envíalos en el cuerpo. MQTT sigue siendo la vía principal para la
+ESP32 y HTTP queda disponible para otros integradores.
 
 Respuesta exitosa:
 
@@ -141,10 +166,10 @@ monitor-hospitalario/
 
 ## Scripts disponibles
 
-| Comando | Descripción |
-| --- | --- |
-| `npm run dev` | Inicia el servidor con Node.js. |
-| `npm test` | Actualmente no hay una suite de pruebas configurada. |
+| Comando         | Descripción                                         |
+| --------------- | ---------------------------------------------------- |
+| `npm run dev` | Inicia el servidor con Node.js.                      |
+| `npm test`    | Actualmente no hay una suite de pruebas configurada. |
 
 ## Seguridad y producción
 

@@ -3,26 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitor Hospitalario - Alertas</title>
+  <meta name="theme-color" content="#f3f5f1">
+  <title>Monitor de pacientes</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Monitor Hospitalario</h1>
-    
-    <div class="status-card">
-      <h2>Último Ritmo Medido</h2>
-      <div id="bpm-display">-- BPM</div>
-      <p id="estado-display">Esperando datos...</p>
-    </div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <a class="brand" href="/" aria-label="Monitor clínico, inicio">
+        <span class="brand-mark" aria-hidden="true">+</span>
+        <span class="brand-name">Pulso<span> / monitor</span></span>
+      </a>
+      <div class="sidebar-label">VISTA</div>
+      <div class="nav-item nav-item-active"><span class="nav-indicator"></span>Pacientes</div>
+      <div class="sidebar-bottom">
+        <span class="system-dot" id="mqtt-dot"></span>
+        <div><strong id="mqtt-label">Conectando</strong><small>Broker MQTT</small></div>
+      </div>
+    </aside>
 
-    <h2>Historial de Alertas</h2>
-    <div id="lista-alertas" class="alertas-container">
-      <!-- Las alertas enviadas por la Raspberry Pi se agregarán acá dinámicamente -->
-    </div>
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SUPERVISIÓN EN TIEMPO REAL</p>
+          <h1>Monitor de pacientes</h1>
+        </div>
+        <div class="connection-pill" id="connection-status" aria-live="polite">
+          <span class="status-dot"></span><span>Conectando al servidor</span>
+        </div>
+      </header>
+
+      <section class="overview" aria-label="Resumen">
+        <div class="overview-item">
+          <span class="overview-label">PACIENTES CON LECTURAS</span>
+          <strong id="patient-count">0</strong>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">HABITACIONES ACTIVAS</span>
+          <strong id="room-count">0</strong>
+        </div>
+        <div class="overview-item overview-note">
+          <span class="overview-label">ÚLTIMA ACTIVIDAD</span>
+          <strong id="last-update">Sin lecturas</strong>
+        </div>
+      </section>
+
+      <section class="patient-section" aria-labelledby="patients-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LECTURAS INDIVIDUALES</p>
+            <h2 id="patients-heading">Pacientes</h2>
+          </div>
+          <div class="filters">
+            <label class="search-control">
+              <span class="visually-hidden">Buscar paciente o habitación</span>
+              <input id="patient-search" type="search" placeholder="Buscar paciente o habitación">
+            </label>
+            <label class="visually-hidden" for="room-filter">Filtrar por habitación</label>
+            <select id="room-filter">
+              <option value="">Todas las habitaciones</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="patient-grid" class="patient-grid" aria-live="polite">
+          <div class="empty-state" id="empty-state">
+            <span class="empty-mark" aria-hidden="true">—</span>
+            <strong>Esperando lecturas</strong>
+            <p>Los pacientes aparecerán cuando llegue su primer BPM.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <span>Las lecturas se muestran como recibidas; no constituyen una evaluación clínica.</span>
+        <span id="data-source">MQTT · HTTP disponible</span>
+      </footer>
+    </main>
   </div>
 
-  <!-- Cliente de Socket.io provisto directamente por el servidor Node.js -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/main.js"></script>
 </body>
