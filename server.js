@@ -2,10 +2,14 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
+const mqtt = require('mqtt');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const mqttUrl = process.env.MQTT_URL || 'mqtt://172.21.0.244:1883';
+const mqttTopic = process.env.MQTT_TOPIC || 'habitacion1/paciente1/bpm';
+const mqttClient = mqtt.connect(mqttUrl, { reconnectPeriod: 2000 });
 
 // Middlewares para procesar JSON y servir archivos estáticos
 app.use(express.json());
@@ -44,6 +48,43 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Cliente web desconectado:', socket.id);
   });
+});
+
+mqttClient.on('connect', () => {
+  console.log(`Conectado al broker MQTT: ${mqttUrl}`);
+  mqttClient.subscribe(mqttTopic, (error) => {
+    if (error) {
+      console.error(`No se pudo suscribir a ${mqttTopic}:`, error.message);
+      return;
+    }
+    console.log(`Suscripto al topic MQTT: ${mqttTopic}`);
+  });
+});
+
+mqttClient.on('reconnect', () => {
+  console.log('Reconectando al broker MQTT...');
+});
+
+mqttClient.on('error', (error) => {
+  console.error('Error MQTT:', error.message);
+});
+
+mqttClient.on('message', (topic, payload) => {
+  const lectura = payload.toString().trim();
+  if (!/^\d+$/.test(lectura)) {
+    console.warn(`Payload MQTT no numérico ignorado en ${topic}: ${lectura}`);
+    return;
+  }
+
+  const datosAlerta = {
+    ritmo: Number(lectura),
+    estado: 'recibido',
+    mensaje: 'Lectura recibida por MQTT',
+    timestamp: new Date().toLocaleTimeString()
+  };
+
+  console.log(`Lectura MQTT recibida en ${topic}: ${lectura} BPM`);
+  io.emit('nueva-alerta', datosAlerta);
 });
 
 const PORT = process.env.PORT || 3000;

@@ -67,6 +67,10 @@ h1 {
   background-color: #2ecc71; /* Verde */
 }
 
+.tarjeta-alerta.recibido {
+  background-color: #52616b;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
