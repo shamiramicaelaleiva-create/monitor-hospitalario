@@ -11,24 +11,26 @@ conectados usando Socket.IO.
 ## Estado actual
 
 - Recibe alertas mediante `POST /api/alerta`.
-- Se suscribe por MQTT a `habitacion1/+/bpm` en `172.21.0.244:1883`.
+- Se suscribe por MQTT a `habitacion1/+/bpm`, `habitacion1/+/temp`, `habitacion1/+/spo2` y `habitacion1/+/raw` en `172.21.0.244:1883`.
 - Identifica habitación y paciente a partir de topics como `habitacion1/paciente2/bpm`.
 - Interpreta el payload MQTT como un BPM positivo enviado como texto, por ejemplo `87`.
-- Muestra una tarjeta independiente con la última lectura de cada paciente.
+- Muestra una tarjeta independiente con las últimas lecturas de BPM, temperatura, SpO2 y la señal raw de cada paciente.
+- Grafica las muestras `raw` recibidas del sensor en tiempo real; no simula un ECG.
 - Permite buscar pacientes y filtrar por habitación.
-- Mantiene en memoria las últimas lecturas mientras el servidor está activo.
+- Guarda cada lectura MQTT y HTTP como un documento independiente en Firestore cuando está configurado.
+- Mantiene en memoria las últimas lecturas para la vista en tiempo real.
 - Las lecturas MQTT se muestran como `recibido`; no se clasifican clínicamente.
 - Conserva `POST /api/alerta` como vía opcional de ingreso por HTTP.
 - Clasifica visualmente las alertas con los estados `normal`, `advertencia` y `peligro`.
-- No persiste alertas en una base de datos.
 - No incluye autenticación del endpoint de ingestión.
 
 ## Arquitectura
 
-1. Cada ESP32 publica el BPM como texto en su topic, por ejemplo `habitacion1/paciente2/bpm`.
-2. El servidor Node.js se suscribe al patrón MQTT de la habitación y extrae habitación y paciente del topic.
-3. Socket.IO envía la lectura a los navegadores conectados y el monitor actualiza la tarjeta correspondiente.
-4. Cada navegador nuevo recibe las últimas lecturas disponibles en memoria.
+1. Cada ESP32 publica BPM y, opcionalmente, temperatura, SpO2 y muestras raw en topics con el formato `habitacion/paciente/tipo`.
+2. El servidor Node.js se suscribe a esos topics y extrae habitación y paciente del topic.
+3. El servidor guarda las lecturas BPM, temperatura y SpO2 en Firestore cuando está configurado; las muestras raw se envían en tiempo real y no se persisten.
+4. Socket.IO envía las lecturas y muestras raw a los navegadores conectados; el monitor grafica directamente las muestras raw recibidas.
+5. Cada navegador nuevo recibe las últimas lecturas disponibles en memoria.
 
 ## Tecnologías
 
@@ -36,6 +38,7 @@ conectados usando Socket.IO.
 - Express 5
 - Socket.IO 4
 - MQTT.js
+- Firebase Admin SDK
 - HTML, CSS y JavaScript sin framework
 
 ## Requisitos
@@ -59,15 +62,47 @@ npm run dev
 
 Luego abrí [http://localhost:3000](http://localhost:3000) en el navegador.
 
+## Configurar Firestore
+
+1. Crea un proyecto en Firebase y habilita Cloud Firestore en modo nativo.
+2. En la configuración del proyecto, crea una clave privada para una cuenta de servicio con permiso para escribir en Firestore.
+3. Guarda el JSON descargado dentro de la carpeta del proyecto como `firebase-service-account.json`. No lo subas a Git ni lo compartas.
+4. Copia `.env.example` a `.env` y configura la ruta del JSON:
+
+```env
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+FIREBASE_PROJECT_ID=el-id-de-tu-proyecto
+```
+
+5. Reinicia el servidor con `npm run dev`.
+
+Al iniciar debería aparecer `Persistencia Firestore habilitada`. Por cada habitación,
+paciente y tipo (`bpm`, `temp` o `spo2`), el servidor escribe como máximo una vez cada 60
+segundos. La primera lectura se guarda de inmediato y las siguientes se guardan
+cuando hayan pasado al menos 60 segundos desde la última escritura exitosa. En cada
+intervalo actualiza el documento correspondiente en `ultimas_lecturas` y agrega una
+muestra a `lecturas`. Ambas escrituras se realizan juntas. Los documentos incluyen
+`habitacion`, `paciente`, `topic`, `tipo`, `valor`, `origen`, `estado`, `mensaje`,
+`fecha` y `recibidoEnISO`. La interfaz sigue recibiendo todas las lecturas en tiempo
+real; Firestore conserva la última lectura y el historial muestreado, no cada mensaje
+MQTT. Las muestras de temperatura y SpO2 también se guardan con este intervalo.
+
+Los documentos guardados antes de este cambio no se eliminan automáticamente.
+
+El mismo servicio guarda las lecturas HTTP recibidas por `/api/alerta`. Si Firestore
+no está configurado, la aplicación sigue funcionando en tiempo real y avisa en la
+terminal que las lecturas se mantienen solo en memoria.
+
 Al iniciar, el servidor intenta conectarse al broker MQTT. En la terminal deberían
-aparecer el broker conectado y el topic suscrito. Por defecto usa
-`MQTT_URL=mqtt://172.21.0.244:1883` y se suscribe a `habitacion1/+/bpm`. El comodín
+aparecer el broker conectado y los topics suscritos. Por defecto usa
+`MQTT_URL=mqtt://172.21.0.244:1883` y se suscribe a `habitacion1/+/bpm`,
+`habitacion1/+/temp`, `habitacion1/+/spo2` y `habitacion1/+/raw`. El comodín
 `+` representa un segmento, así que recibirá paciente1, paciente2, paciente3, etc.,
 de esa habitación. Si un mismo broker recibe varias habitaciones, se puede escuchar
-el segmento de habitación también:
+el segmento de habitación también (cada tipo de dato se configura por separado):
 
 ```bash
-MQTT_TOPIC='+/+/bpm' npm run dev
+MQTT_BPM_TOPIC='+/+/bpm' MQTT_TEMP_TOPIC='+/+/temp' MQTT_SPO2_TOPIC='+/+/spo2' MQTT_RAW_TOPIC='+/+/raw' npm run dev
 ```
 
 Si cada habitación tiene su propio broker, configura `MQTT_BROKERS` como un objeto
@@ -77,16 +112,33 @@ JSON que asocie cada habitación con la dirección de su Raspberry Pi:
 MQTT_BROKERS='{"habitacion1":"mqtt://172.21.0.244:1883","habitacion2":"mqtt://172.21.0.245:1883"}' npm run dev
 ```
 
-En ese modo, el servidor se suscribe automáticamente a `habitacion/+/bpm` en cada
-broker. El topic debe tener la forma `habitacion/paciente/bpm`, y el payload debe ser
-un número positivo, por ejemplo `87`.
+En ese modo, el servidor se suscribe automáticamente a `habitacion/+/bpm`,
+`habitacion/+/temp`, `habitacion/+/spo2` y `habitacion/+/raw` en cada broker. Los topics deben tener la
+forma `habitacion/paciente/tipo`, donde `tipo` es `bpm`, `temp`, `spo2` o `raw`. Por ejemplo,
+`habitacion1/Ana/bpm` mostrará `Ana` como paciente en la tarjeta; no se reemplaza
+automáticamente por la palabra «Paciente».
 
-Para probar la integración, deja el servidor funcionando y publica un BPM desde otra
-terminal:
+El payload de BPM y temperatura debe ser un número positivo; el de `SpO2` puede enviarse
+como `SpO2: 90.5 %` (también admite coma decimal, por ejemplo `SpO2: 90,5 %`) o como
+número (`90.5`), entre 1 y 100. Para `raw`, se admiten
+muestras numéricas individuales, separadas por comas/espacios o como un arreglo JSON,
+por ejemplo `512`, `510,515,520` o `[510,515,520]`. La gráfica conserva las últimas 90
+muestras, por lo que barre aproximadamente el doble de rápido que mostrando 180; su
+velocidad física también depende de la frecuencia con que el ESP32 envía muestras.
+Usa las muestras visibles para autoescalar
+la señal; estos datos se muestran como los entrega el sensor y no tienen una unidad o
+distancia asignada por el servidor. Si el sensor es óptico, la forma de onda puede incluir
+variaciones del pulso periférico, pero no es un ECG: un ECG mide la actividad eléctrica
+del corazón y requiere electrodos. La señal raw no se guarda en Firestore. Se puede
+definir un patrón raw distinto con `MQTT_RAW_TOPIC` (por ejemplo
+`MQTT_RAW_TOPIC='habitacion1/+/raw'`).
+
+Para probar la integración, deja el servidor funcionando y publica una lectura de
+SpO2 desde otra terminal:
 
 ```bash
-mosquitto_pub -h 172.21.0.244 -p 1883 \\
-   -t 'habitacion1/paciente2/bpm' -m '87'
+mosquitto_pub -h 172.21.0.244 -p 1883 \
+   -t 'habitacion1/paciente2/spo2' -m 'SpO2: 90.5 %'
 ```
 
 El monitor debería crear o actualizar la tarjeta de `paciente2` en `habitacion1`.

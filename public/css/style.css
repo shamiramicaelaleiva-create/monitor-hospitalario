@@ -314,7 +314,7 @@ h2 {
   border-top: 3px solid #aab5ae;
   border-radius: 6px;
   background: var(--surface);
-  animation: reveal 220ms ease-out both;
+  animation: none;
 }
 
 .patient-card[hidden] {
@@ -393,26 +393,98 @@ h2 {
   color: var(--red);
 }
 
-.patient-bpm {
-  display: flex;
-  height: 77px;
-  align-items: baseline;
-  gap: 8px;
+.patient-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   padding-top: 11px;
 }
 
-.patient-bpm strong {
-  font-size: 48px;
+.patient-bpm,
+.patient-temp,
+.patient-spo2 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 77px;
+}
+
+.patient-bpm strong,
+.patient-temp strong,
+.patient-spo2 strong {
+  font-size: 32px;
   font-weight: 550;
   letter-spacing: 0;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  transition: none;
 }
 
-.patient-bpm span {
+.patient-bpm span,
+.patient-temp span,
+.patient-spo2 span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
+}
+
+.signal-section {
+  margin: 2px 0 12px;
+}
+
+.raw-section {
+  margin-top: 0;
+}
+
+.signal-label {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.signal-chart {
+  position: relative;
+  height: 76px;
+  overflow: hidden;
+  border: 1px solid #e8ede8;
+  border-radius: 3px;
+  background-color: #fbfcfa;
+  background-image:
+    linear-gradient(#e8ede8 1px, transparent 1px),
+    linear-gradient(90deg, #e8ede8 1px, transparent 1px);
+  background-size: 19px 19px;
+}
+
+.raw-chart {
+  height: 142px;
+  border-color: #163d32;
+  background-color: #071a15;
+  background-image:
+    linear-gradient(#183a30 1px, transparent 1px),
+    linear-gradient(90deg, #183a30 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.signal-chart canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.signal-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #8a948e;
+  font-size: 9px;
+}
+
+.signal-chart.has-data .signal-placeholder {
+  display: none;
 }
 
 .card-divider {
@@ -517,11 +589,6 @@ h2 {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   clip-path: inset(50%);
-}
-
-@keyframes reveal {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 900px) {
