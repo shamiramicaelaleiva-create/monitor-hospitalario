@@ -103,6 +103,11 @@ select {
   color: #52605a;
   font-size: 13px;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  background: #f0f3ef;
 }
 
 .nav-item-active {
@@ -581,6 +586,125 @@ h2 {
   font-size: 10px;
 }
 
+.report-main {
+  max-width: 1200px;
+}
+
+.back-link {
+  color: var(--green-deep);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.report-panel {
+  max-width: 680px;
+  margin: 40px auto 0;
+  padding: clamp(22px, 4vw, 40px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.report-panel h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 26px;
+  font-weight: 400;
+}
+
+.report-description {
+  margin: 12px 0 26px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.report-form {
+  display: grid;
+  gap: 9px;
+}
+
+.report-form label {
+  margin-top: 9px;
+  color: #52605a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.report-form label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.report-form input {
+  width: 100%;
+  min-height: 43px;
+  padding: 0 12px;
+  border: 1px solid #cfd7cf;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.report-form input:focus {
+  border-color: var(--green);
+  outline: 2px solid var(--green-soft);
+}
+
+.report-form button {
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--green);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-form button:hover {
+  background: var(--green-deep);
+}
+
+.report-form button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.report-message {
+  min-height: 18px;
+  margin: 3px 0 0;
+  color: var(--green-deep);
+  font-size: 12px;
+}
+
+.report-message.is-error {
+  color: var(--red);
+}
+
+.report-notice {
+  margin-top: 22px;
+  padding: 14px 16px;
+  border-radius: 5px;
+  background: var(--surface-muted);
+  color: #52605a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.report-notice strong {
+  color: var(--ink);
+}
+
+.report-notice p {
+  margin: 4px 0 0;
+}
+
 .visually-hidden {
   position: absolute;
   overflow: hidden;
@@ -661,6 +785,10 @@ h2 {
     align-items: flex-start;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .back-link {
+    align-self: flex-start;
   }
 
   h1 {

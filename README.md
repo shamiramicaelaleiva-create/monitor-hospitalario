@@ -17,7 +17,8 @@ conectados usando Socket.IO.
 - Muestra una tarjeta independiente con las últimas lecturas de BPM, temperatura, SpO2 y la señal raw de cada paciente.
 - Grafica las muestras `raw` recibidas del sensor en tiempo real; no simula un ECG.
 - Permite buscar pacientes y filtrar por habitación.
-- Guarda cada lectura MQTT y HTTP como un documento independiente en Firestore cuando está configurado.
+- Guarda cada lectura de pulso, temperatura y SpO2 recibida por MQTT o HTTP como un documento independiente en Firestore cuando está configurado.
+- Permite generar en `/informes` un informe PDF por nombre y, opcionalmente, habitación, consultando directamente el historial de Firestore.
 - Mantiene en memoria las últimas lecturas para la vista en tiempo real.
 - Las lecturas MQTT se muestran como `recibido`; no se clasifican clínicamente.
 - Conserva `POST /api/alerta` como vía opcional de ingreso por HTTP.
@@ -39,6 +40,7 @@ conectados usando Socket.IO.
 - Socket.IO 4
 - MQTT.js
 - Firebase Admin SDK
+- PDFKit
 - HTML, CSS y JavaScript sin framework
 
 ## Requisitos
@@ -62,6 +64,25 @@ npm run dev
 
 Luego abrí [http://localhost:3000](http://localhost:3000) en el navegador.
 
+### Ejecutar en Windows sin instalar Node.js
+
+El ZIP portable incluye Node.js, dependencias y un acceso directo por lote:
+extrae el ZIP completo y abre `windows/Iniciar monitor.bat`. Se abrirá el monitor
+local en `http://localhost:3000`; la ventana minimizada del servidor debe permanecer
+abierta mientras se usa la aplicación. La copia de exposición configura el broker
+`172.21.0.244:1883`.
+
+El ZIP solicitado incluye la clave de servicio de Firebase para simplificar la
+instalación en la red controlada de la exposición. Como esa clave concede acceso a
+Firestore, no compartas este paquete fuera de los equipos de la exposición y revócala
+o rótala cuando termine el proyecto.
+
+Si ejecutas el monitor en más de una notebook, configura
+`FIRESTORE_WRITE_ENABLED=true` solamente en una. En las otras usa
+`FIRESTORE_WRITE_ENABLED=false` en `.env`; seguirán consultando Firestore para los
+informes, pero no duplicarán las lecturas que reciben por MQTT. El valor
+predeterminado es `true`.
+
 ## Configurar Firestore
 
 1. Crea un proyecto en Firebase y habilita Cloud Firestore en modo nativo.
@@ -76,18 +97,37 @@ FIREBASE_PROJECT_ID=el-id-de-tu-proyecto
 
 5. Reinicia el servidor con `npm run dev`.
 
-Al iniciar debería aparecer `Persistencia Firestore habilitada`. Por cada habitación,
-paciente y tipo (`bpm`, `temp` o `spo2`), el servidor escribe como máximo una vez cada 60
-segundos. La primera lectura se guarda de inmediato y las siguientes se guardan
-cuando hayan pasado al menos 60 segundos desde la última escritura exitosa. En cada
-intervalo actualiza el documento correspondiente en `ultimas_lecturas` y agrega una
-muestra a `lecturas`. Ambas escrituras se realizan juntas. Los documentos incluyen
+Al iniciar debería aparecer `Persistencia Firestore habilitada`. Cada lectura de
+pulso, temperatura o SpO2 genera un documento nuevo con ID automático en la colección
+`lecturas`; no se sobrescribe ni se limita por intervalo. Cada documento incluye
 `habitacion`, `paciente`, `topic`, `tipo`, `valor`, `origen`, `estado`, `mensaje`,
-`fecha` y `recibidoEnISO`. La interfaz sigue recibiendo todas las lecturas en tiempo
-real; Firestore conserva la última lectura y el historial muestreado, no cada mensaje
-MQTT. Las muestras de temperatura y SpO2 también se guardan con este intervalo.
+`fecha` y `recibidoEnISO`. Las muestras `raw` siguen transmitiéndose en tiempo real,
+pero no se guardan como lecturas vitales.
 
-Los documentos guardados antes de este cambio no se eliminan automáticamente.
+Los documentos históricos existentes en `lecturas` siguen siendo compatibles y no se
+eliminan. La colección anterior `ultimas_lecturas` deja de actualizarse; sus documentos
+existentes tampoco se eliminan automáticamente.
+Para mantener varios monitores conectados sin duplicar registros, define
+`FIRESTORE_WRITE_ENABLED=false` en los monitores que no deban guardar lecturas.
+
+### Informes PDF
+
+Abre `http://localhost:3000/informes`. Si el topic identifica a la persona, escribe
+el nombre y deja las fechas vacías para incluir todo su historial, o selecciona ambas
+fechas en la hora local del equipo para limitarlo a una sesión. Si el topic no
+identifica a la persona, deja vacío el nombre y selecciona inicio y fin; se incluirán
+todas las mediciones del intervalo, por lo que este modo solo identifica a una persona
+si hubo un único sensado a la vez. Las fechas deben completarse juntas y el fin debe
+ser posterior al inicio. También puedes agregar la habitación para reducir los
+resultados. La búsqueda de nombre y habitación ignora mayúsculas, espacios al inicio
+o al final y espacios repetidos entre palabras. El informe se genera desde los
+documentos de `lecturas` y contiene promedios, mediana,
+mínimos, máximos, variación, una lista cronológica de las mediciones y una comparación
+descriptiva con el promedio de cada dato en todo el historial almacenado. La comparación
+puede incluir sesiones anteriores y no representa un rango saludable ni una evaluación
+clínica. Se requiere Firestore configurado para generar informes. La aplicación aún no
+tiene autenticación: limitá el acceso al puesto controlado de la exposición y no
+publiques el servidor en una red abierta.
 
 El mismo servicio guarda las lecturas HTTP recibidas por `/api/alerta`. Si Firestore
 no está configurado, la aplicación sigue funcionando en tiempo real y avisa en la

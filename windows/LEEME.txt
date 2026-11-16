@@ -1,0 +1,16 @@
+VITALIX - MONITOR PORTABLE PARA WINDOWS
+
+1. Extrae todo el contenido del ZIP a una carpeta.
+2. Haz doble clic en "Iniciar monitor.bat".
+3. El navegador abrira el monitor local en http://localhost:3000.
+4. Para detenerlo, cierra la ventana minimizada "Vitalix - servidor".
+
+El programa se conecta al broker MQTT configurado en .env y a Firestore.
+La clave privada de Firebase esta incluida en este paquete por pedido del usuario:
+no compartas este ZIP fuera de los equipos controlados para la exposicion.
+Al terminar la actividad, revoca o rota esa clave desde Google Cloud/Firebase.
+
+Esta copia preconfigurada usa el broker mqtt://172.21.0.244:1883.
+Si se ejecuta en mas de una notebook, deja FIRESTORE_WRITE_ENABLED=true solo
+en una de ellas; en las demas cambialo a false en .env para evitar guardar
+mediciones duplicadas. Los informes siguen consultando Firestore.

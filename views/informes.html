@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3f5f1">
+  <title>Informes de sensado · Vitalix</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <a class="brand" href="/" aria-label="Monitor clínico, inicio">
+        <span class="brand-mark" aria-hidden="true">+</span>
+        <span class="brand-name">Pulso<span> / monitor</span></span>
+      </a>
+      <div class="sidebar-label">VISTA</div>
+      <a class="nav-item" href="/">Monitor en vivo</a>
+      <a class="nav-item nav-item-active" href="/informes">Informes PDF</a>
+      <div class="sidebar-bottom">
+        <span class="system-dot is-online"></span>
+        <div><strong>Desde Firestore</strong><small>Historial de mediciones</small></div>
+      </div>
+    </aside>
+
+    <main class="main-content report-main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">INFORME DE SENSADO</p>
+          <h1>Tu sesión de sensado</h1>
+        </div>
+        <a class="back-link" href="/">Volver al monitor</a>
+      </header>
+
+      <section class="report-panel" aria-labelledby="report-heading">
+        <p class="eyebrow">GENERADO DESDE EL HISTORIAL</p>
+        <h2 id="report-heading">Preparar informe PDF</h2>
+        <p class="report-description">La búsqueda ignora mayúsculas y espacios sobrantes. Podés buscar todo el historial de un nombre o identificador, o acotar el informe seleccionando un período en la hora local de esta computadora. Si el topic no identifica a la persona, seleccioná inicio y fin para aislar su sesión.</p>
+
+        <form id="report-form" class="report-form">
+          <label for="start-time">Inicio del sensado <span>(opcional si indicás nombre o identificador)</span></label>
+          <input id="start-time" name="inicio" type="datetime-local">
+
+          <label for="end-time">Fin del sensado <span>(opcional si indicás nombre o identificador)</span></label>
+          <input id="end-time" name="fin" type="datetime-local">
+
+          <label for="patient-name">Nombre o identificador del topic <span>(opcional)</span></label>
+          <input id="patient-name" name="paciente" type="text" maxlength="100" autocomplete="off" placeholder="Por ejemplo: Ana">
+
+          <label for="room-name">Puesto / habitación <span>(opcional)</span></label>
+          <input id="room-name" name="habitacion" type="text" maxlength="100" autocomplete="off" placeholder="Por ejemplo: habitacion1">
+
+          <button type="submit" id="report-submit">Generar y descargar PDF</button>
+          <p id="report-message" class="report-message" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="report-notice">
+          <strong>Lectura informativa, no clínica.</strong>
+          <p>El informe muestra promedios, rangos, las mediciones registradas y una comparación descriptiva con el promedio de todos los datos almacenados. Ese conjunto puede incluir otras sesiones; no es un rango saludable ni un diagnóstico.</p>
+          <p>Si dejás vacío el nombre o identificador, el período completo pasa a ser necesario. Se incluirán todas las mediciones recibidas dentro de ese horario; usá esa opción solo si hubo una persona sensándose a la vez, porque el intervalo no identifica por sí mismo a una persona.</p>
+          <p>Los informes contienen datos personales: usá esta pantalla solo en un puesto controlado y no publiques el servidor en una red abierta sin autenticación.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/informes.js"></script>
+</body>
+</html>
