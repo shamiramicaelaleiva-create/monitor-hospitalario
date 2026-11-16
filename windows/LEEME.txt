@@ -5,6 +5,8 @@ VITALIX - MONITOR PORTABLE PARA WINDOWS
 3. El navegador abrira el monitor local en http://localhost:3000.
 4. Para detenerlo, cierra la ventana minimizada "Vitalix - servidor".
 
+Si falta Node.js portable, el iniciador usa Node.js instalado y disponible en PATH.
+
 El programa se conecta al broker MQTT configurado en .env y a Firestore.
 La clave privada de Firebase esta incluida en este paquete por pedido del usuario:
 no compartas este ZIP fuera de los equipos controlados para la exposicion.

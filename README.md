@@ -71,6 +71,8 @@ extrae el ZIP completo y abre `windows/Iniciar monitor.bat`. Se abrirá el monit
 local en `http://localhost:3000`; la ventana minimizada del servidor debe permanecer
 abierta mientras se usa la aplicación. La copia de exposición configura el broker
 `172.21.0.244:1883`.
+Si falta el Node.js portable, el iniciador también puede usar una instalación de
+Node.js disponible en `PATH`.
 
 El ZIP solicitado incluye la clave de servicio de Firebase para simplificar la
 instalación en la red controlada de la exposición. Como esa clave concede acceso a

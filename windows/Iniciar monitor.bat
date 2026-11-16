@@ -2,9 +2,23 @@
 setlocal
 cd /d "%~dp0\.."
 set "PORT=3000"
+set "NODE_EXE="
 
-if not exist "runtime\node.exe" (
-  echo No se encontro Node.js portable. Volve a extraer el ZIP completo.
+if exist "runtime\node.exe" set "NODE_EXE=%CD%\runtime\node.exe"
+if not defined NODE_EXE if exist "runtime\" (
+  for /r "runtime" %%N in (node.exe) do (
+    if not defined NODE_EXE set "NODE_EXE=%%~fN"
+  )
+)
+if not defined NODE_EXE (
+  for /f "delims=" %%N in ('where.exe node 2^>nul') do (
+    if not defined NODE_EXE set "NODE_EXE=%%~fN"
+  )
+)
+
+if not defined NODE_EXE (
+  echo No se encontro Node.js portable ni instalado en PATH.
+  echo Extrae el ZIP completo o instala Node.js y vuelve a intentarlo.
   pause
   exit /b 1
 )
@@ -28,7 +42,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "Vitalix - servidor (cerrar esta ventana para detener)" /min "%~dp0..\runtime\node.exe" "%~dp0..\server.js"
+start "Vitalix - servidor (cerrar esta ventana para detener)" /min "%NODE_EXE%" "%~dp0..\server.js"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$end=(Get-Date).AddSeconds(30); do { try { $response=Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3000' -TimeoutSec 2; if ($response.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Milliseconds 500 } while ((Get-Date) -lt $end); exit 1"
 if errorlevel 1 (
   echo El monitor no pudo iniciar. Revisa la ventana minimizada del servidor.
